@@ -18,6 +18,7 @@ package com.example.mobilecomputing_23_lesson0501.sleeptracker
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.map
 import androidx.lifecycle.viewModelScope
@@ -36,12 +37,31 @@ class SleepTrackerViewModel(
     private var tonight = MutableLiveData<SleepNight?>()
     private val nights = database.getAllNights()
 
+    private var _showSnackbarEvent = MutableLiveData<Boolean>()
+
+    val showSnackBarEvent: LiveData<Boolean>
+        get() = _showSnackbarEvent
+
+    private val _navigateToSleepQuality = MutableLiveData<SleepNight?>()
+
+    val navigateToSleepQuality: LiveData<SleepNight?>
+        get() = _navigateToSleepQuality
+
+    fun doneNavigating() {
+        _navigateToSleepQuality.value = null
+    }
+
+
     val nightsString = nights.map { nights ->
         formatNights(nights, application.resources)
     }
 
     init {
         initializeTonight()
+    }
+
+    fun doneShowingSnackbar() {
+        _showSnackbarEvent.value = false
     }
 
     private fun initializeTonight() {
@@ -77,6 +97,7 @@ class SleepTrackerViewModel(
             val oldNight = tonight.value ?: return@launch
             oldNight.endTimeMilli = System.currentTimeMillis()
             update(oldNight)
+            _navigateToSleepQuality.value = oldNight
         }
     }
 
@@ -88,11 +109,22 @@ class SleepTrackerViewModel(
         viewModelScope.launch {
             clear()
             tonight.value = null
+            _showSnackbarEvent.value = true
         }
     }
 
     suspend fun clear() {
         database.clear()
+    }
+
+    val startButtonVisible = tonight.map {
+        it == null
+    }
+    val stopButtonVisible = tonight.map {
+        it != null
+    }
+    val clearButtonVisible = nights.map {
+        it?.isNotEmpty()
     }
 
 }
